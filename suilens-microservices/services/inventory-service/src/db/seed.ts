@@ -26,8 +26,8 @@ const inventoryTemplate = [
 
 const seedBranches = [
   { code: 'KB-JKT-S', name: 'Suilens - Jakarta Selatan', address: 'Kebayoran Baru, Jakarta Selatan' }, //Main Branch, stock banyak
-  { code: 'KB-BDG-E', name: 'Suilens - jakarta Timur', address: 'Jatinegara, Jakarta Timur' }, //Secondary Branch
-  { code: 'KB-SBY-N', name: 'Suilens - Jakarta Utara', address: 'Kelapa Gading, Jakarta Utara' }, //New Branch, stock sedikit
+  { code: 'KB-JKT-E', name: 'Suilens - jakarta Timur', address: 'Jatinegara, Jakarta Timur' }, //Secondary Branch
+  { code: 'KB-JKT-N', name: 'Suilens - Jakarta Utara', address: 'Kelapa Gading, Jakarta Utara' }, //New Branch, stock sedikit
 ];
 
 async function fetchLenses(): Promise<CatalogLens[]> {
