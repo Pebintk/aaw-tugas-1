@@ -47,7 +47,6 @@ async function seed() {
   await db.insert(branches).values(seedBranches).onConflictDoNothing({target: branches.code});
   console.log(`Seeded ${seedBranches.length} branches.`);
 
-  // 3. Build and seed inventory rows
   const seedInventory: any[] = [];
   
   lenses.forEach((lens) => {  

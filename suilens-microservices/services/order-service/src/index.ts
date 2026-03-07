@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { publishEvent } from './events';
 
 const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || 'http://localhost:3001';
+const INVENTORY_SERVICE_URL = process.env.INVENTORY_SERVICE_URL || 'http://localhost:3004';
 
 interface CatalogLens {
   id: string;
@@ -43,27 +44,67 @@ const app = new Elysia()
         manufacturerName: lens.manufacturerName,
         dayPrice: lens.dayPrice,
       },
+      branchCode: body.branchCode,
       startDate: start,
       endDate: end,
       totalPrice,
+      status: 'pending',
     }).returning();
     if (!order) {
       return new Response(JSON.stringify({ error: 'Failed to create order' }), { status: 500 });
     }
 
+    const reservationResponse = await fetch(`${INVENTORY_SERVICE_URL}/api/inventory/reserve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: order.id,
+        lensId: body.lensId,
+        branchCode: body.branchCode,
+        startDate: body.startDate,
+        endDate: body.endDate,
+        Quantity: 1,
+      }),
+    });
+
+    if (!reservationResponse.ok) {
+      // Reservation failed — mark the order as cancelled and surface the reason
+      await db.update(orders)
+        .set({ status: 'cancelled' })
+        .where(eq(orders.id, order.id));
+
+      const errBody = await reservationResponse.json() as { message?: string };
+      const isNotFound = reservationResponse.status === 404;
+      return new Response(
+        JSON.stringify({
+          error: isNotFound
+            ? `Branch '${body.branchCode}' does not have this type of lens`
+            : (errBody.message ?? 'Insufficient stock at the selected branch'),
+        }),
+        { status: isNotFound ? 404 : 409 }
+      );
+    }
+
+    const [confirmed] = await db.update(orders)
+      .set({ status: 'confirmed' })
+      .where(eq(orders.id, order.id))
+      .returning();
+
     await publishEvent('order.placed', {
-      orderId: order.id,
+      orderId: confirmed!.id,
       customerName: body.customerName,
       customerEmail: body.customerEmail,
       lensName: lens.modelName,
+      branchCode: body.branchCode,
     });
 
-    return new Response(JSON.stringify(order), { status: 201 });
+    return new Response(JSON.stringify(confirmed), { status: 201 });
   }, {
     body: t.Object({
       customerName: t.String(),
       customerEmail: t.String({ format: 'email' }),
       lensId: t.String({ format: 'uuid' }),
+      branchCode: t.String({ minLength: 1 }),
       startDate: t.String(),
       endDate: t.String(),
     }),
@@ -75,6 +116,40 @@ const app = new Elysia()
       return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
     }
     return results[0];
+  })
+
+  .patch('/api/orders/:id/cancel', async ({ params }) => {
+    const [order] = await db.select()
+    .from(orders)
+    .where(eq(orders.id, params.id));
+
+    if (!order) {
+      return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
+    }
+
+    if (order.status === 'confirmed' || order.status === 'active') {
+      await fetch(`${INVENTORY_SERVICE_URL}/api/inventory/release`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+    } else {
+      return new Response(JSON.stringify({ error: `Order has already cancelled with status: ${order.status}`  }), { status: 409 });
+    }
+
+    const [updated] = await db.update(orders)
+      .set({ status: 'cancelled' })
+      .where(eq(orders.id, params.id))
+      .returning();
+
+    await publishEvent('order.cancelled', {
+      orderId: updated!.id,
+      customerName: updated!.customerName,
+      customerEmail: updated!.customerEmail,
+      branchCode: updated!.branchCode,
+    });
+
+    return updated;
   })
   .get('/health', () => ({ status: 'ok', service: 'order-service' }))
   .listen(3002);
