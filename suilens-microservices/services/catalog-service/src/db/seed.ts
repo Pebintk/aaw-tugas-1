@@ -39,7 +39,7 @@ const seedLenses = [
 
 async function seed() {
   console.log('Seeding catalog lenses...');
-  await db.insert(lenses).values(seedLenses);
+  await db.insert(lenses).values(seedLenses).onConflictDoNothing({ target: lenses.modelName });
   console.log(`Seeded ${seedLenses.length} lenses.`);
   process.exit(0);
 }

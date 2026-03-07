@@ -1,3 +1,4 @@
+import { eq, and } from 'drizzle-orm/sql/expressions/conditions';
 import { db } from './index';
 import { branches, inventory } from './schema';
 
@@ -8,21 +9,6 @@ interface CatalogLens {
   modelName: string;
   manufacturerName: string;
 }
-
-const inventoryTemplate = [
-  // Cabang Selatan (Stok Banyak)
-  { modelName: 'Summilux-M 35mm f/1.4 ASPH.', branchCode: 'KB-JKT-S', total: 5, available: 5 },
-  { modelName: 'Art 24-70mm f/2.8 DG DN', branchCode: 'KB-JKT-S', total: 4, available: 4 },
-  { modelName: 'NIKKOR Z 70-200mm f/2.8 VR S', branchCode: 'KB-JKT-S', total: 3, available: 3 },
-
-  // Cabang Timur (Stok Menengah)
-  { modelName: 'Summilux-M 35mm f/1.4 ASPH.', branchCode: 'KB-JKT-E', total: 2, available: 2 },
-  { modelName: 'Art 24-70mm f/2.8 DG DN', branchCode: 'KB-JKT-E', total: 2, available: 2 },
-
-  // Cabang Utara (Stok Sedikit)
-  { modelName: 'Art 24-70mm f/2.8 DG DN', branchCode: 'KB-JKT-N', total: 1, available: 1 },
-  { modelName: 'NIKKOR Z 70-200mm f/2.8 VR S', branchCode: 'KB-JKT-N', total: 1, available: 0 }, 
-];
 
 const seedBranches = [
   { code: 'KB-JKT-S', name: 'Suilens - Jakarta Selatan', address: 'Kebayoran Baru, Jakarta Selatan' }, //Main Branch, stock banyak
@@ -71,7 +57,21 @@ async function seed() {
   });
 
   console.log('Seeding inventory...');
-  await db.insert(inventory).values(seedInventory).onConflictDoNothing();
+  for (const row of seedInventory) {
+    // Cek apakah data sudah ada
+    const existing = await db.select().from(inventory)
+      .where(
+        and(
+          eq(inventory.lensId, row.lensId), 
+          eq(inventory.branchCode, row.branchCode)
+        )
+      );
+
+    // Jika belum ada, baru di-insert
+    if (existing.length === 0) {
+      await db.insert(inventory).values(row);
+    }
+  }
   console.log(`Seeded ${seedInventory.length} inventory records.`);
 
   process.exit(0);

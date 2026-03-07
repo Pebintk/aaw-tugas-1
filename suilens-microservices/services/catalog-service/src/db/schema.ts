@@ -2,7 +2,7 @@ import { pgTable, uuid, varchar, integer, numeric, text } from 'drizzle-orm/pg-c
 
 export const lenses = pgTable('lenses', {
   id: uuid('id').primaryKey().defaultRandom(),
-  modelName: varchar('model_name', { length: 255 }).notNull(),
+  modelName: varchar('model_name', { length: 255 }).unique().notNull(),
   manufacturerName: varchar('manufacturer_name', { length: 255 }).notNull(),
   minFocalLength: integer('min_focal_length').notNull(),
   maxFocalLength: integer('max_focal_length').notNull(),

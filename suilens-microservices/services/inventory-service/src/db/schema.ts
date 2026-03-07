@@ -1,5 +1,5 @@
 // services/inventory-service/src/db/schema.ts
-import { pgTable, uuid, varchar, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, integer, timestamp, pgEnum, unique } from 'drizzle-orm/pg-core';
 
 export const reservationStatusEnum = pgEnum('reservation_status', ['reserved', 'released']);
 
@@ -17,7 +17,10 @@ export const inventory = pgTable('inventory', {
   totalQuantity: integer('total_quantity').notNull().default(0),
   availableQuantity: integer('available_quantity').notNull().default(0),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+},(t) => ({
+  // Mencegah duplikasi lensa yang sama di cabang yang sama
+  unq: unique().on(t.lensId, t.branchCode), 
+}));
 
 export const reservations = pgTable('reservations', {
   id: uuid('id').primaryKey().defaultRandom(),
