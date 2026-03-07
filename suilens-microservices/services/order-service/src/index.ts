@@ -129,13 +129,7 @@ const app = new Elysia()
       return { error: 'Order not found' };
     }
 
-    if (order.status === 'confirmed' || order.status === 'active') {
-      await fetch(`${INVENTORY_SERVICE_URL}/api/inventory/release`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: order.id }),
-      });
-    } else {
+    if (order.status === 'cancelled' || order.status === 'returned') {
       set.status = 409;
       return { error: `Order has already cancelled with status: ${order.status}` };
     }
@@ -150,6 +144,8 @@ const app = new Elysia()
       customerName: updated!.customerName,
       customerEmail: updated!.customerEmail,
       branchCode: updated!.branchCode,
+      lensId: updated!.lensId,
+      quantity: 1,
     });
 
     return updated;

@@ -132,6 +132,7 @@ services:
       - "3004:3004"
     environment:
       DATABASE_URL: postgres://inventory:inventory@inventory-db:5432/inventory
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:
       catalog-service:
         condition: service_started

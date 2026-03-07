@@ -3,7 +3,7 @@ import { cors } from '@elysiajs/cors';
 import { db } from './db';
 import { branches, inventory, reservations } from './db/schema';
 import { eq, and } from 'drizzle-orm';
-
+import { startConsumer } from './consumer';
 
 const app = new Elysia()   
   .use(cors())
@@ -171,6 +171,10 @@ const app = new Elysia()
   .get('/health', () => ({ status: 'ok', service: 'inventory-service' }))
   .listen(3004);
   
-  // startConsumer().catch(console.error);
+  startConsumer().catch((err) => {
+    console.error('Failed to start inventory consumer:', err);
+    process.exit(1);
+  });
+
 
 console.log(`Inventory Service running on port ${app.server?.port}`);
