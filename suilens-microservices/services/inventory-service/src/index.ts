@@ -11,6 +11,26 @@ const app = new Elysia()
   // Available Branches
   .get('/api/branches', async () => db.select().from(branches))
 
+  // Available Reservations, optionally filtered by branchCode or lensId
+  .get('/api/reservations', async ({ query }) => {
+    const conditions = [];
+    if (query.branchCode) {
+      conditions.push(eq(reservations.branchCode, query.branchCode));
+    }
+    if (query.lensId) {
+      conditions.push(eq(reservations.lensId, query.lensId));
+    }    
+    if (conditions.length > 0) {
+      return db.select().from(reservations).where(and(...conditions));
+    }
+    return db.select().from(reservations);
+  }, {
+    query: t.Object({
+      branchCode: t.Optional(t.String()),
+      lensId: t.Optional(t.String({ format: 'uuid' })),
+    }),
+  })
+
   // Each Branch available inventory, optionally filtered by branchCode
   .get('/api/inventory/branch', async ({ query }) => {
     if (query.branchCode) {
@@ -97,6 +117,57 @@ const app = new Elysia()
     }),
   })
 
+  // Release a reservation (called by Order Service when an order is cancelled or expires)
+  .post('/api/inventory/release', async ({ body, set }) => {
+    const { orderId } = body;
+
+    const result = await db.transaction(async (tx) => {
+      // Fetch the reservation
+      const [reservation] = await tx.select().from(reservations)
+        .where(eq(reservations.orderId, orderId));
+      if (!reservation) {
+        return { _err: 'NOT_FOUND' as const, message: 'No reservation found for this order ID' };
+      }
+      if (reservation.status === 'released') {
+        return { _err: 'ALREADY_RELEASED' as const, message: 'Stock for this order has already been released' };
+      }
+
+      const [item] = await tx.select().from(inventory)
+        .where(and(
+          eq(inventory.lensId, reservation.lensId),
+          eq(inventory.branchCode, reservation.branchCode),
+        ));
+      if (!item) {
+        return { _err: 'NOT_FOUND' as const, message: 'Inventory record not found' };
+      }
+
+      // Restore quantity, capped at totalQuantity
+      const newAvailable = Math.min(item.availableQuantity + reservation.quantity, item.totalQuantity);
+      await tx.update(inventory)
+        .set({ availableQuantity: newAvailable, updatedAt: new Date() })
+        .where(eq(inventory.id, item.id));
+
+      const [updated] = await tx.update(reservations)
+        .set({ status: 'released', updatedAt: new Date() })
+        .where(eq(reservations.id, reservation.id))
+        .returning();
+
+      return { _ok: true as const, reservation: updated };
+    });
+
+    if ('_err' in result) {
+      set.status = result._err === 'ALREADY_RELEASED' ? 409 : 404;
+      const { _err, ...rest } = result;
+      return rest;
+    }
+
+    return result.reservation;
+  }, {
+    body: t.Object({
+      orderId: t.String({ format: 'uuid' }),
+    }),
+  })
+  
   .get('/health', () => ({ status: 'ok', service: 'inventory-service' }))
   .listen(3004);
   

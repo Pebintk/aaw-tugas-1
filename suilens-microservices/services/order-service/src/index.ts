@@ -63,7 +63,7 @@ const app = new Elysia()
         branchCode: body.branchCode,
         startDate: body.startDate,
         endDate: body.endDate,
-        Quantity: 1,
+        quantity: 1,
       }),
     });
 
@@ -109,6 +109,7 @@ const app = new Elysia()
       endDate: t.String(),
     }),
   })
+
   .get('/api/orders', async () => db.select().from(orders))
   .get('/api/orders/:id', async ({ params }) => {
     const results = await db.select().from(orders).where(eq(orders.id, params.id));
