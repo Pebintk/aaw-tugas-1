@@ -17,10 +17,11 @@ interface CatalogLens {
 
 const app = new Elysia()
   .use(cors())
-  .post('/api/orders', async ({ body }) => {
+  .post('/api/orders', async ({ body, set }) => {
     const lensResponse = await fetch(`${CATALOG_SERVICE_URL}/api/lenses/${body.lensId}`);
     if (!lensResponse.ok) {
-      return new Response(JSON.stringify({ error: 'Lens not found' }), { status: 404 });
+      set.status = 404;
+      return { error: 'Lens not found' };
     }
     const lens = await lensResponse.json() as CatalogLens;
 
@@ -28,10 +29,8 @@ const app = new Elysia()
     const end = new Date(body.endDate);
     const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     if (days <= 0) {
-      return new Response(
-        JSON.stringify({ error: 'End date must be after start date' }),
-        { status: 400 }
-      );
+      set.status = 400;
+      return { error: 'End date must be after start date' };
     }
     const totalPrice = (days * parseFloat(lens.dayPrice)).toFixed(2);
 
@@ -51,7 +50,8 @@ const app = new Elysia()
       status: 'pending',
     }).returning();
     if (!order) {
-      return new Response(JSON.stringify({ error: 'Failed to create order' }), { status: 500 });
+      set.status = 500;
+      return { error: 'Failed to create order' };
     }
 
     const reservationResponse = await fetch(`${INVENTORY_SERVICE_URL}/api/inventory/reserve`, {
@@ -75,14 +75,12 @@ const app = new Elysia()
 
       const errBody = await reservationResponse.json() as { message?: string };
       const isNotFound = reservationResponse.status === 404;
-      return new Response(
-        JSON.stringify({
-          error: isNotFound
-            ? `Branch '${body.branchCode}' does not have this type of lens`
-            : (errBody.message ?? 'Insufficient stock at the selected branch'),
-        }),
-        { status: isNotFound ? 404 : 409 }
-      );
+      set.status = isNotFound ? 404 : 409;
+      return {
+        error: isNotFound
+          ? `Branch '${body.branchCode}' does not have this type of lens`
+          : (errBody.message ?? 'Insufficient stock at the selected branch'),
+      };
     }
 
     const [confirmed] = await db.update(orders)
@@ -98,7 +96,8 @@ const app = new Elysia()
       branchCode: body.branchCode,
     });
 
-    return new Response(JSON.stringify(confirmed), { status: 201 });
+    set.status = 201;
+    return confirmed;
   }, {
     body: t.Object({
       customerName: t.String(),
@@ -111,21 +110,23 @@ const app = new Elysia()
   })
 
   .get('/api/orders', async () => db.select().from(orders))
-  .get('/api/orders/:id', async ({ params }) => {
+  .get('/api/orders/:id', async ({ params, set }) => {
     const results = await db.select().from(orders).where(eq(orders.id, params.id));
     if (!results[0]) {
-      return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
+      set.status = 404;
+      return { error: 'Order not found' };
     }
     return results[0];
   })
 
-  .patch('/api/orders/:id/cancel', async ({ params }) => {
+  .patch('/api/orders/:id/cancel', async ({ params, set  }) => {
     const [order] = await db.select()
     .from(orders)
     .where(eq(orders.id, params.id));
 
     if (!order) {
-      return new Response(JSON.stringify({ error: 'Order not found' }), { status: 404 });
+      set.status = 404;
+      return { error: 'Order not found' };
     }
 
     if (order.status === 'confirmed' || order.status === 'active') {
@@ -135,7 +136,8 @@ const app = new Elysia()
         body: JSON.stringify({ orderId: order.id }),
       });
     } else {
-      return new Response(JSON.stringify({ error: `Order has already cancelled with status: ${order.status}`  }), { status: 409 });
+      set.status = 409;
+      return { error: `Order has already cancelled with status: ${order.status}` };
     }
 
     const [updated] = await db.update(orders)
