@@ -5,6 +5,8 @@ interface CartItem {
   lensId: string;
   lensName: string;
   dayPrice: number;
+  branchCode: string;
+  branchName: string;
   startDate: string;
   endDate: string;
 }
