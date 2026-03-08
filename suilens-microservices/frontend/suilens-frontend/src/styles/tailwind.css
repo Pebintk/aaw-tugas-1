@@ -17,6 +17,22 @@
   --color-warning: rgb(var(--v-theme-warning));
   --color-error: rgb(var(--v-theme-error));
 
+  /* MD3 surface tones */
+  --color-md-surface-container:     rgb(var(--v-theme-surface-container));
+  --color-md-surface-container-low: rgb(var(--v-theme-surface-container-low));
+
+  /* MD3 key colors */
+  --color-md-primary:                    rgb(var(--v-theme-primary));
+  --color-md-on-primary:                 rgb(var(--v-theme-on-primary));
+  --color-md-secondary-container:        rgb(var(--v-theme-secondary-container));
+  --color-md-on-secondary-container:     rgb(var(--v-theme-on-secondary-container));
+  --color-md-tertiary:                   rgb(var(--v-theme-tertiary));
+  --color-md-tertiary-container:         rgb(var(--v-theme-tertiary-container));
+  --color-md-on-surface:                 rgb(var(--v-theme-on-surface));
+  --color-md-on-surface-variant:         rgb(var(--v-theme-on-surface-variant));
+  --color-md-outline:                    rgb(var(--v-theme-outline));
+  --color-md-outline-variant:            rgb(var(--v-theme-outline-variant));
+
   --breakpoint-*: initial;
   --breakpoint-xs: 0px;
   --breakpoint-sm: 600px;
@@ -26,8 +42,8 @@
   --breakpoint-xxl: 2138px;
 }
 
-@custom-variant light (&:where(.v-theme--light, .v-theme--light *));
-@custom-variant dark (&:where(.v-theme--dark, .v-theme--dark *));
+@custom-variant light (&:where(.v-theme--md3Light, .v-theme--md3Light *));
+@custom-variant dark  (&:where(.v-theme--md3Dark,  .v-theme--md3Dark  *));
 
 /* safelist to ensure variables are always available */
 @source inline('font-heading');
@@ -38,6 +54,14 @@
   note: adopt and extend values from TailwindCSS
 */
 @utility rounded-pill   { border-radius: 9999px }
+
+/* MD3 easing */
+@utility ease-md3 { transition-timing-function: cubic-bezier(0.2, 0, 0, 1); }
+
+/* Active press feedback */
+@utility active-scale {
+  &:active { transform: scale(0.95); }
+}
 @utility rounded-circle { border-radius: 50%    }
 @utility rounded-shaped { border-radius: 24px 0 }
 
