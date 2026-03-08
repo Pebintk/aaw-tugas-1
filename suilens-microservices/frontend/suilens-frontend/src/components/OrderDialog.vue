@@ -183,7 +183,7 @@
                 :rules="[rules.required, rules.afterStart]"
                 variant="filled"
                 class="md3-field hide-calendar-indicator"
-              />
+              />startDate
             </div>
           </div>
 
@@ -429,17 +429,7 @@ function close() {
 
 /* Menghilangkan ikon kalender bawaan browser secara total dan absolut */
 .hide-calendar-indicator :deep(input[type="date"]::-webkit-calendar-picker-indicator) {
-  position: absolute !important;
-  left: 0 !important;
-  top: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  background: transparent !important;
-  color: transparent !important;
-  cursor: pointer !important;
-  opacity: 0 !important;
-  display: block !important;
-  -webkit-appearance: none !important;
+  display: none !important;
 }
 
 /* Memastikan input relative agar ::-webkit-calendar-picker-indicator membentang sempurna */

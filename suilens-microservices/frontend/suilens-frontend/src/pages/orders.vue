@@ -47,6 +47,27 @@
         </div>
       </div>
 
+      <!-- ── Status filter chips ──────────────────────────────────────── -->
+      <div v-if="!isLoading && !error && orders?.length" class="max-w-7xl mx-auto mb-6 flex flex-wrap gap-2">
+        <button
+          v-for="f in filterOptions"
+          :key="f.value ?? 'all'"
+          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 active:scale-95"
+          :style="filterStatus === f.value
+            ? 'background: #6750A4; color: white;'
+            : 'background: #E8DEF8; color: #49454F;'"
+          @click="filterStatus = f.value"
+        >
+          {{ f.label }}
+          <span
+            class="inline-flex items-center justify-center h-5 min-w-[20px] px-1 rounded-full text-xs font-bold"
+            :style="filterStatus === f.value
+              ? 'background: rgba(255,255,255,0.25); color: white;'
+              : 'background: #D0BCFF; color: #21005D;'"
+          >{{ f.count }}</span>
+        </button>
+      </div>
+
       <div v-if="isLoading" class="flex flex-wrap justify-center gap-6">
         <div
           v-for="n in 6"
@@ -95,7 +116,7 @@
 
       <div v-else class="flex flex-wrap justify-center gap-6">
         <div
-          v-for="order in sortedOrders"
+          v-for="order in filteredOrders"
           :key="order.id"
           class="w-full sm:w-[500px] lg:w-[600px] flex flex-col rounded-[24px] overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)] shadow-sm hover:shadow-md"
           style="background: #F3EDF7;"
@@ -255,6 +276,28 @@ const sortedOrders = computed(() =>
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   ),
 );
+
+// ── Status filter ─────────────────────────────────────────────────────────
+const filterStatus = ref<Order['status'] | null>(null);
+
+const filteredOrders = computed(() =>
+  filterStatus.value === null
+    ? sortedOrders.value
+    : sortedOrders.value.filter((o) => o.status === filterStatus.value),
+);
+
+const ALL_STATUSES: Order['status'][] = ['pending', 'confirmed', 'active', 'returned', 'cancelled'];
+
+const filterOptions = computed(() => {
+  const all = sortedOrders.value;
+  const countOf = (s: Order['status']) => all.filter((o) => o.status === s).length;
+  return [
+    { label: 'Semua', value: null, count: all.length },
+    ...ALL_STATUSES
+      .filter((s) => countOf(s) > 0)
+      .map((s) => ({ label: statusLabel(s), value: s, count: countOf(s) })),
+  ];
+});
 
 // ── Cancel flow ─────────────────────────────────────────────────────────────
 const cancelDialog = ref(false);
