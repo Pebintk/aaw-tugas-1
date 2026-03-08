@@ -68,7 +68,6 @@ const app = new Elysia()
     });
 
     if (!reservationResponse.ok) {
-      // Reservation failed — mark the order as cancelled and surface the reason
       await db.update(orders)
         .set({ status: 'cancelled' })
         .where(eq(orders.id, order.id));
