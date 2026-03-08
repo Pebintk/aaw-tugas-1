@@ -12,13 +12,12 @@ export const branches = pgTable('branches', {
 
 export const inventory = pgTable('inventory', {
   id: uuid('id').primaryKey().defaultRandom(),
-  lensId: uuid('lens_id').notNull(), // ID from Catalog Service (no FK cross-service)
+  lensId: uuid('lens_id').notNull(), // ID from Catalog Service 
   branchCode: varchar('branch_code', { length: 20 }).references(() => branches.code).notNull(),
   totalQuantity: integer('total_quantity').notNull().default(0),
   availableQuantity: integer('available_quantity').notNull().default(0),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 },(t) => ({
-  // Mencegah duplikasi lensa yang sama di cabang yang sama
   unq: unique().on(t.lensId, t.branchCode), 
 }));
 

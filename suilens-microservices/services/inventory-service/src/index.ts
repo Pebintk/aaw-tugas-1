@@ -41,7 +41,7 @@ const app = new Elysia()
     query: t.Object({ branchCode: t.Optional(t.String()) }),
   })
 
-  // Stock for a specific lens across all branches (joins branch metadata)
+  // Stock for a specific lens across all branches
   .get('/api/inventory/lenses/:lensId', async ({ params }) => {
     return db
       .select({
@@ -59,20 +59,17 @@ const app = new Elysia()
       .where(eq(inventory.lensId, params.lensId));
   })
 
-  // Reserve lenses for an order
-  // Called synchronously by Order Service when an order is placed.
+  // Reserve lense stock for an order
   .post('/api/inventory/reserve', async ({ body, set }) => {
     const { orderId, lensId, branchCode, quantity } = body;
 
     const result = await db.transaction(async (tx) => {
-      // If there are duplicate reservations for the same order -> reject
       const [existing] = await tx.select().from(reservations)
         .where(eq(reservations.orderId, orderId));
       if (existing) {
         return { _err: 'DUPLICATE' as const, message: 'Reservation already exists for this order' };
       }
 
-      // Fetch the inventory row
       const [item] = await tx.select().from(inventory)
         .where(and(eq(inventory.lensId, lensId), eq(inventory.branchCode, branchCode)));
       if (!item) {
@@ -87,12 +84,10 @@ const app = new Elysia()
         };
       }
 
-      // Decrement available quantity
       await tx.update(inventory)
         .set({ availableQuantity: item.availableQuantity - quantity, updatedAt: new Date() })
         .where(eq(inventory.id, item.id));
 
-      // Create reservation record
       const [reservation] = await tx.insert(reservations)
         .values({ orderId, lensId, branchCode, quantity })
         .returning();
@@ -116,13 +111,12 @@ const app = new Elysia()
       quantity: t.Integer({ minimum: 1 }),
     }),
   })
-
-  // Release a reservation (called by Order Service when an order is cancelled or expires)
+  
+  // Release reserved stock 
   .post('/api/inventory/release', async ({ body, set }) => {
     const { orderId } = body;
 
-    const result = await db.transaction(async (tx) => {
-      // Fetch the reservation
+    const result = await db.transaction(async (tx) => {    
       const [reservation] = await tx.select().from(reservations)
         .where(eq(reservations.orderId, orderId));
       if (!reservation) {

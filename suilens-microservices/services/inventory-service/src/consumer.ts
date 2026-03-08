@@ -36,7 +36,7 @@ async function releaseStockForOrder(orderId: string): Promise<void> {
       );
 
     if (!item) {
-      // Inventory row missing — mark reservation released anyway so we don't
+      // If Inventory row missing — mark reservation released anyway so we don't
       // keep re-processing the event.
       await tx
         .update(reservations)
@@ -45,7 +45,6 @@ async function releaseStockForOrder(orderId: string): Promise<void> {
       return;
     }
 
-    // Restore quantity, capped at totalQuantity to prevent overshooting.
     const newAvailable = Math.min(
       item.availableQuantity + reservation.quantity,
       item.totalQuantity,
@@ -71,7 +70,6 @@ export async function startConsumer(): Promise<void> {
   await channel.assertQueue(QUEUE_NAME, { durable: true });
   await channel.bindQueue(QUEUE_NAME, EXCHANGE_NAME, 'order.cancelled');
 
-  // Process one message at a time so DB transactions don't race.
   channel.prefetch(1);
 
   console.log(`Inventory Service listening on queue: ${QUEUE_NAME}`);
@@ -96,7 +94,6 @@ export async function startConsumer(): Promise<void> {
       channel.ack(msg);
     } catch (error) {
       console.error('Error processing message:', error);
-      // Requeue once; if it keeps failing the broker will dead-letter it.
       channel.nack(msg, false, true);
     }
   });

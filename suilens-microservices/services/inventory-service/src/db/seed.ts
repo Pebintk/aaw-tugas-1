@@ -57,8 +57,8 @@ async function seed() {
   });
 
   console.log('Seeding inventory...');
+  // For each lens-branch combination, insert if not exists. 
   for (const row of seedInventory) {
-    // Cek apakah data sudah ada
     const existing = await db.select().from(inventory)
       .where(
         and(
@@ -67,7 +67,6 @@ async function seed() {
         )
       );
 
-    // Jika belum ada, baru di-insert
     if (existing.length === 0) {
       await db.insert(inventory).values(row);
     }
